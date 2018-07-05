@@ -624,9 +624,11 @@ def get_users_through_dialog(browser,
 
     abort = False
     person_list = []
-    total_list = len(buttons)
+    person_list_temp = dialog_username_extractor(buttons)
+    total_list = len(person_list_temp)
     simulated_list = []
     simulator_counter = 0
+    matches = []
 
     # scroll down if the generated list of user to follow is not enough to
     # follow amount set
@@ -645,8 +647,24 @@ def get_users_through_dialog(browser,
             buttons = dialog.find_elements_by_xpath(
                 "//div/div/span/button[text()='Following']")
 
-        total_list = len(buttons)
-        abort = (before_scroll == total_list)
+        person_list_temp = dialog_username_extractor(buttons)
+        total_list = len(person_list_temp)
+        if channel == "Follow":
+            logger.info("Temp person list: {}".format(len(person_list_temp)))
+
+            legit_users = diff(zip(buttons, person_list_temp), follow_restrict)
+            total_list = len(legit_users)
+
+            logger.info("Temp person list after: {}".format(total_list))
+
+            matches = match(zip(buttons, person_list_temp), follow_restrict)
+
+            for button in matches:
+                browser.execute_script("arguments[0].remove()", button)
+
+            logger.info("Deleted: {}".format(len(matches)))
+
+        abort = (before_scroll == total_list + len(matches))
         if abort:
             if total_list < real_amount:
                 logger.info("Failed to load desired amount of users")
@@ -664,15 +682,15 @@ def get_users_through_dialog(browser,
                     abort == True or
                         total_list >= amount or
                             sc_rolled == random.randint(3, 5)) and
-                                len(buttons) > 0):
+                                len(legit_users) > 0):
 
             quick_amount = 1 if not total_list >= amount else random.randint(1, 4)
 
             for i in range(0, quick_amount):
                 logger.info("Simulated follow : {}".format(len(simulated_list)+1))
 
-                quick_index = random.randint(0, len(buttons)-1)
-                quick_button = buttons[quick_index]
+                quick_index = random.randint(0, len(legit_users)-1)
+                quick_button = legit_users[quick_index]
                 quick_username = dialog_username_extractor(quick_button)
                 if quick_username[0] not in simulated_list:
                     quick_follow = follow_through_dialog(browser,
@@ -690,7 +708,7 @@ def get_users_through_dialog(browser,
 
             simulator_counter = 0
 
-    person_list = dialog_username_extractor(buttons)
+    person_list = person_list_temp
     if randomize:
         random.shuffle(person_list)
 
@@ -702,6 +720,13 @@ def get_users_through_dialog(browser,
 
     return person_list, simulated_list
 
+def diff(first, second):
+    second = set(second)
+    return [i for i, item in first if item not in second]
+
+def match(first, second):
+    second = set(second)
+    return [i for i, item in first if item in second]
 
 def dialog_username_extractor(buttons):
     """ Extract username of a follow button from a dialog box """
