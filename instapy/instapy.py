@@ -712,7 +712,7 @@ class InstaPy:
                                               self.blacklist,
                                               self.logger,
                                               self.logfolder)
-                sleep(random.randint(1, 3))
+                sleep(random.randint(35, 45))
 
                 if followed:
                     self.followed += 1
